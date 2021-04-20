@@ -8,35 +8,24 @@ import (
 
 	"github.com/nerdynick/ccloud-go-sdk/telemetry"
 	"github.com/nerdynick/ccloud-go-sdk/telemetry/metric"
-	"github.com/nerdynick/ccloud-tele/cmd/common"
-	log "github.com/sirupsen/logrus"
+	"github.com/nerdynick/ccloud-tele/cmd/command"
 	"github.com/spf13/cobra"
+	"go.uber.org/zap"
 )
 
 type AvailableMetrics struct {
 	Results []metric.Metric
+	Log     *zap.Logger
 }
 
-func (am *AvailableMetrics) Run(cmd *cobra.Command, args []string, context common.CommandContext, client telemetry.TelemetryClient) (bool, error) {
-	resType, err := context.GetResourceType()
-	if err != nil {
-		return false, err
-	}
-
-	res, err := client.GetAvailableMetricsForResource(resType)
+func (am *AvailableMetrics) Run(cmd *cobra.Command, args []string, context command.CommandContext, client telemetry.TelemetryClient) (bool, error) {
+	res, err := client.GetAvailableMetricsForResource(context.ResourceType)
 	am.Results = res
-	log.WithFields(log.Fields{
-		"result": res,
-		"err":    err,
-	}).Info("Fetched Available Metrics")
+	am.Log.Info("Fetched Available Metrics")
 
 	return (len(res) > 0), err
 }
 func (am AvailableMetrics) OutputPlain() error {
-	log.WithFields(log.Fields{
-		"result": am.Results,
-	}).Info("Printing Plain Output")
-
 	for _, metric := range am.Results {
 		labels := []string{}
 		for _, label := range metric.Labels {
@@ -80,9 +69,11 @@ func init() {
 	metrics := &cobra.Command{
 		Use:   "metrics",
 		Short: "List currently available metrics.",
-		RunE:  common.CobraRunE(&AvailableMetrics{}),
+		RunE: command.CobraRunE(&AvailableMetrics{
+			Log: command.CMDContext.Log.Named("list.metrics"),
+		}),
 	}
-	common.AddResourceTypeFlags(metrics, &common.CMDContext)
+	command.AddResourceTypeFlags(metrics, &command.CMDContext)
 
 	CMDList.AddCommand(metrics)
 }

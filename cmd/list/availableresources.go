@@ -7,31 +7,25 @@ import (
 	"strings"
 
 	"github.com/nerdynick/ccloud-go-sdk/telemetry"
-	"github.com/nerdynick/ccloud-go-sdk/telemetry/response"
-	"github.com/nerdynick/ccloud-tele/cmd/common"
-	log "github.com/sirupsen/logrus"
+	"github.com/nerdynick/ccloud-go-sdk/telemetry/resourcetype"
+	"github.com/nerdynick/ccloud-tele/cmd/command"
 	"github.com/spf13/cobra"
+	"go.uber.org/zap"
 )
 
 type AvailableResources struct {
-	Results []response.ResourceType
+	Results []resourcetype.ResourceType
+	Log     *zap.Logger
 }
 
-func (am *AvailableResources) Run(cmd *cobra.Command, args []string, context common.CommandContext, client telemetry.TelemetryClient) (bool, error) {
+func (am *AvailableResources) Run(cmd *cobra.Command, args []string, context command.CommandContext, client telemetry.TelemetryClient) (bool, error) {
 	res, err := client.GetAvailableResources()
 	am.Results = res
-	log.WithFields(log.Fields{
-		"result": res,
-		"err":    err,
-	}).Info("Fetched Available Resources")
+	am.Log.Info("Fetched Available Resources")
 
 	return (len(res) > 0), err
 }
 func (am AvailableResources) OutputPlain() error {
-	log.WithFields(log.Fields{
-		"result": am.Results,
-	}).Info("Printing Plain Output")
-
 	for _, metric := range am.Results {
 		labels := []string{}
 		for _, label := range metric.Labels {
@@ -68,11 +62,13 @@ func (am AvailableResources) OutputCSV(writer *csv.Writer) error {
 }
 
 func init() {
-	metrics := &cobra.Command{
+	resources := &cobra.Command{
 		Use:   "resources",
 		Short: "List currently available resources.",
-		RunE:  common.CobraRunE(&AvailableResources{}),
+		RunE: command.CobraRunE(&AvailableResources{
+			Log: command.CMDContext.Log.Named("list.resources"),
+		}),
 	}
 
-	CMDList.AddCommand(metrics)
+	CMDList.AddCommand(resources)
 }
