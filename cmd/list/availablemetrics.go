@@ -73,7 +73,7 @@ func init() {
 			Log: command.CMDContext.Log.Named("list.metrics"),
 		}),
 	}
-	command.AddResourceTypeFlags(metrics, &command.CMDContext)
+	command.CMDContext.AddResourceTypeFlags(metrics)
 
 	CMDList.AddCommand(metrics)
 }

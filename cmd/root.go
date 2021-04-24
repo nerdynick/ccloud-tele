@@ -4,10 +4,10 @@ import (
 	"os"
 	"strings"
 
+	"github.com/nerdynick/ccloud-go-sdk/client"
 	"github.com/nerdynick/ccloud-go-sdk/telemetry"
 	"github.com/nerdynick/ccloud-tele/cmd/command"
 	"github.com/nerdynick/ccloud-tele/cmd/list"
-	log "github.com/sirupsen/logrus"
 
 	"github.com/spf13/cobra"
 )
@@ -31,15 +31,15 @@ var (
 	extraVerbose      bool
 	extraExtraVerbose bool
 	strOutputFormat   string = string(command.OutputPlain)
+	apiKey            string = os.Getenv("API_KEY")
+	apiSecret         string = os.Getenv("API_SECRET")
 )
 
 func init() {
-	apiKey := os.Getenv("API_KEY")
-	apiSecret := os.Getenv("API_SECRET")
 	apiSecretDefault := ""
 
 	if apiSecret != "" {
-		apiSecretDefault = "****"
+		apiSecretDefault = "****Secret***"
 	}
 
 	//Root Commands
@@ -48,11 +48,11 @@ func init() {
 	rootCmd.PersistentFlags().BoolVar(&extraVerbose, "vv", false, "Extra Verbose output")
 	rootCmd.PersistentFlags().BoolVar(&extraExtraVerbose, "vvv", false, "Extra Extra Verbose output")
 
-	rootCmd.PersistentFlags().StringVarP(&command.CMDContext.APIClient.Context.APIKey, "api-key", "k", apiKey, "API Key - Optional ENV Var 'API_KEY'")
-	rootCmd.PersistentFlags().StringVarP(&command.CMDContext.APIClient.Context.APISecret, "api-secret", "s", apiSecretDefault, "API Secret - Optional ENV Var 'API_SECRET'")
+	rootCmd.PersistentFlags().StringVarP(&apiKey, "api-key", "k", apiKey, "API Key - Optional ENV Var 'API_KEY'")
+	rootCmd.PersistentFlags().StringVarP(&apiSecret, "api-secret", "s", apiSecretDefault, "API Secret - Optional ENV Var 'API_SECRET'")
 
 	rootCmd.PersistentFlags().StringVarP(&strOutputFormat, "output", "o", strOutputFormat, "Output Format - Available Options: plain, csv, json")
-	rootCmd.PersistentFlags().StringVarP(&command.CMDContext.APIClient.BaseURL, "baseurl", "b", telemetry.DefaultBaseURL, "API Base Url")
+	rootCmd.PersistentFlags().StringVarP(&command.CMDContext.APIClient.Context.BaseURL, "baseurl", "b", telemetry.DefaultBaseURL, "API Base Url")
 	rootCmd.PersistentFlags().StringVarP(&command.CMDContext.APIClient.Context.UserAgent, "agent", "a", "ccloud-go-sdk/go-cli", "HTTP User Agent")
 
 	rootCmd.AddCommand(list.CMDList)
@@ -70,9 +70,12 @@ func rootInit() {
 	command.CMDContext.OutputFormat = AvailableOutputFormats[strings.ToLower(strOutputFormat)]
 
 	//Get API Secret from ENV Vars if MASKED
-	if command.CMDContext.APIClient.Context.APISecret == "****" {
-		command.CMDContext.APIClient.Context.APISecret = os.Getenv("API_SECRET")
+	if apiSecret == "****Secret***" {
+		apiSecret = os.Getenv("API_SECRET")
 	}
+
+	command.CMDContext.APIClient.Context.APIKey = apiKey
+	command.CMDContext.APIClient.Context.APISecret = client.SecurePassword(apiSecret)
 
 	//Get the level of Logging to preform
 	if verbose || extraVerbose || extraExtraVerbose {
@@ -85,7 +88,7 @@ func rootInit() {
 			command.CMDContext.LogLevel3()
 		}
 	} else {
-		log.SetLevel(log.WarnLevel)
+		command.CMDContext.LogLevel0()
 	}
 
 }
